@@ -30,7 +30,7 @@ jobs:
       run: go mod tidy
 
     - name: Build
-      run: go build -v -o ${{ runner.os }}-${{ matrix.goarch }}-${{ matrix.goos }}
+      run: go build -v -o serial2net_${{ matrix.goarch }}_${{ matrix.goos }}${{ matrix.goos == 'windows' && '.exe' || '' }}
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
@@ -38,8 +38,8 @@ jobs:
     - name: Archive production artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-${{ runner.os }}-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: ${{ runner.os }}-${{ matrix.goarch }}-${{ matrix.goos }}
+        name: serial2net_${{ matrix.goos }}-${{ matrix.goarch }}
+        path: serial2net_${{ matrix.goarch }}_${{ matrix.goos }}${{ matrix.goos == 'windows' && '.exe' || '' }}
   
   release:
     needs: build
@@ -81,4 +81,3 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
