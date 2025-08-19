@@ -2,11 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"go.bug.st/serial"
