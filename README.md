@@ -1,6 +1,6 @@
 # serial2net
 
-![Go Logo](https://raw.githubusercontent.com/golang/go/master/doc/gopher/gopher.png)
+![Go Logo]([https://raw.githubusercontent.com/golang/go/master/doc/gopher/gopher.png](https://github.com/golang-samples/gopher-vector/blob/9fe99fbf17b019125bf649f8a921882b54e151a6/gopher.png))
 
 A simple, single-binary Go application that acts as a relay between a serial port and a TCP port. It listens for a single incoming TCP connection and forwards any received data to the specified serial port.
 
