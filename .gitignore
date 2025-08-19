@@ -1,0 +1,20 @@
+# Executables for various OS
+# Windows
+*.exe
+# Linux
+*.out
+# macOS
+*.bin
+
+# Compiled binaries for your specific project
+/relay
+/relay.exe
+/relay-linux
+/relay-windows.exe
+
+# IDE and editor files
+.idea/
+.vscode/
+
+# Dependency cache
+/vendor/
