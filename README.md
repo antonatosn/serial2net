@@ -33,13 +33,13 @@ A simple, single-binary Go application that acts as a relay between a serial por
 3.  **Build the executable:**
     ```bash
     # For your current system
-    go build -o relay
+    go build -o serial2net
 
     # For Windows
-    GOOS=windows go build -o relay.exe
+    GOOS=windows go build -o serial2net.exe
 
     # For Linux
-    GOOS=linux go build -o relay-linux
+    GOOS=linux go build -o serial2net-linux
     ```
 
 ## ⚙️ Usage
@@ -56,7 +56,8 @@ The program is designed to be run from the command line with configurable flags.
 
 ### Example
 
-To run the relay, connecting to a serial device on `COM4` with a baud rate of `115200` and listening for TCP connections on port `9000`:
+To run the serial2net, connecting to a serial device on `COM4` with a baud rate of `115200` and listening for TCP connections on port `9000`:
 
 ```bash
-./relay --serial COM4 --baud 115200 --tcp :9000
+./serial2net-linux --serial COM4 --baud 115200 --tcp :9000
+
