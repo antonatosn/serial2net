@@ -1,11 +1,9 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+name: Go Build & Sign
 
-name: Go Build
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
-  
+
 on:
   push:
     tags:
@@ -17,42 +15,71 @@ jobs:
     strategy:
       matrix:
         goos: [linux, windows]
-        goarch: [amd64, arm64]    
+        goarch: [amd64, arm64]
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.22'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
 
-    - name: Install dependencies
-      run: go mod tidy
+      - name: Install dependencies
+        run: go mod tidy
 
-    - name: Build
-      run: go build -v -o serial2net_${{ matrix.goarch }}_${{ matrix.goos }}${{ matrix.goos == 'windows' && '.exe' || '' }}
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
+      - name: Build
+        run: go build -v -o serial2net_${{ matrix.goarch }}_${{ matrix.goos }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
 
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: serial2net_${{ matrix.goos }}-${{ matrix.goarch }}
-        path: serial2net_${{ matrix.goarch }}_${{ matrix.goos }}${{ matrix.goos == 'windows' && '.exe' || '' }}
-  
-  release:
+      - name: Upload unsigned artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: serial2net_${{ matrix.goos }}-${{ matrix.goarch }}
+          path: serial2net_${{ matrix.goarch }}_${{ matrix.goos }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+
+  sign:
     needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    runs-on: self-hosted
     steps:
-      - name: Download artifacts
+      - name: Download unsigned artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: dist
 
-      - name: Create Release
+      - name: Sign Windows binaries
+        run: |
+          Get-ChildItem dist -Recurse -Filter *.exe | ForEach-Object {
+            Write-Host "Signing $($_.FullName)"
+            signtool sign `
+              /fd sha256 `
+              /tr http://timestamp.digicert.com `
+              /td sha256 `
+              /sha1 $env:CODE_SIGN_THUMBPRINT `
+              $_.FullName
+          }
+        shell: pwsh
+        env:
+          CODE_SIGN_THUMBPRINT: "<your-cert-thumbprint>"
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-binaries
+          path: dist/*
+
+  release:
+    needs: sign
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download signed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-binaries
+          path: release-dist
+
+      - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -62,22 +89,16 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+
       - name: Upload binaries to Release
         run: |
-          ls -l artifacts
-          for file in artifacts/*/*; do
-            if [[ -f "$file" ]]; then
-              echo "Uploading $file..."
-              base_name=$(basename "$file")
-              curl -sL \
-                --request POST \
-                --header "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                --header "Content-Type: application/octet-stream" \
-                --data-binary "@$file" \
-                "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${base_name}"
-            else
-              echo "Skipping non-file: $file"
-            fi
+          for file in release-dist/*; do
+            echo "Uploading $file..."
+            base_name=$(basename "$file")
+            curl -sL \
+              --request POST \
+              --header "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              --header "Content-Type: application/octet-stream" \
+              --data-binary "@$file" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${base_name}"
           done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
