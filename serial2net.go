@@ -5,26 +5,65 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"slices"
 	"time"
 
 	"go.bug.st/serial"
 )
 
-func main() {
-	// Define flags for serial port and TCP settings
-	serialPortName := flag.String("serial", "COM3", "Serial port name (e.g., COM3, /dev/ttyUSB0)")
-	baudRate := flag.Int("baud", 9600, "Serial port baud rate")
-	tcpPort := flag.String("tcp", ":8000", "TCP port to listen on (e.g., :8000)")
+var acceptedBaudRates = []int{110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 230400, 460800, 921600}
 
-	// Parse the flags
-	flag.Parse()
+func flagValidation() {
+	if err := flags.Parse(os.Args[1:]); err != nil {
+		log.Fatalf("Error parsing flags: %v", err)
+	}
+
+	if !slices.Contains(acceptedBaudRates, *baudRate) {
+		log.Fatalf("Invalid baud rate: %d", *baudRate)
+	}
+	if !slices.Contains([]int{5, 6, 7, 8}, *dataBits) {
+		log.Fatalf("Invalid data bits: %d", *dataBits)
+	}
+	if *parity != "none" && *parity != "odd" && *parity != "even" {
+		log.Fatalf("Invalid parity: %s", *parity)
+	}
+	if *stopBits != 1 && *stopBits != 2 {
+		log.Fatalf("Invalid stop bits: %d", *stopBits)
+	}
+}
+
+var (
+	flags          = flag.NewFlagSet("serial2net", flag.ExitOnError)
+	serialPortName = flags.String("serial", "COM3", "Serial port name (e.g., COM3, /dev/ttyUSB0)")
+	baudRate       = flags.Int("baud", 9600, "Serial port baud rate (110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 230400, 460800, 921600)")
+	dataBits       = flags.Int("bits", 8, "Serial port data bits (5, 6, 7, 8)")
+	parity         = flags.String("parity", "none", "Serial port parity (none, odd, even)")
+	stopBits       = flags.Int("stop", 1, "Serial port stop bits (1, 2)")
+	tcpPort        = flags.String("tcp", ":8000", "TCP port to listen on (e.g., :8000)")
+)
+
+func main() {
+	flags.Parse(os.Args[1:])
+
+	flagValidation()
 
 	// Open the serial port
+	var parityMode serial.Parity
+	switch *parity {
+	case "none":
+		parityMode = serial.NoParity
+	case "odd":
+		parityMode = serial.OddParity
+	case "even":
+		parityMode = serial.EvenParity
+	}
+
 	mode := &serial.Mode{
 		BaudRate: *baudRate,
-		DataBits: 8,
-		Parity:   serial.NoParity,
-		StopBits: serial.OneStopBit,
+		DataBits: *dataBits,
+		Parity:   parityMode,
+		StopBits: serial.StopBits(*stopBits),
 	}
 	port, err := serial.Open(*serialPortName, mode)
 	if err != nil {
@@ -60,12 +99,12 @@ func handleConnection(conn net.Conn, serPort serial.Port) {
 
 	for {
 		n, err := conn.Read(tcpReadBuffer)
+		if err == io.EOF {
+			log.Printf("TCP connection from %s closed.", conn.RemoteAddr())
+			return
+		}
 		if err != nil {
-			if err == io.EOF {
-				log.Printf("TCP connection from %s closed.", conn.RemoteAddr())
-			} else {
-				log.Printf("Error reading from TCP connection %s: %v", conn.RemoteAddr(), err)
-			}
+			log.Printf("Error reading from TCP connection %s: %v", conn.RemoteAddr(), err)
 			return
 		}
 
