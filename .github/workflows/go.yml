@@ -60,7 +60,6 @@ jobs:
               /as `
               /v `
               /csp "Microsoft Enhanced RSA and AES Cryptographic Provider" `
-              /keylength 4096 `
               $_.FullName
           }
         shell: pwsh
@@ -106,3 +105,4 @@ jobs:
               --data-binary "@$file" \
               "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${base_name}"
           done
+
