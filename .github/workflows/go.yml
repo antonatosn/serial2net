@@ -92,16 +92,29 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload binaries to Release
+      - name: Upload release assets
+        shell: pwsh
         run: |
-          for file in release-dist/*; do
-            echo "Uploading $file..."
-            base_name=$(basename "$file")
-            curl -sL \
-              --request POST \
-              --header "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              --header "Content-Type: application/octet-stream" \
-              --data-binary "@$file" \
-              "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${base_name}"
-          done
+          Get-ChildItem "release-dist" | ForEach-Object {
+            if (-Not $_.PSIsContainer) {
+              $file = $_.FullName
+              $baseName = $_.Name
+              Write-Host "Uploading $file..."
+
+              curl.exe -sSL `
+                -X POST `
+                -H "Authorization: token $env:GITHUB_TOKEN" `
+                -H "Content-Type: application/octet-stream" `
+                --data-binary "@$file" `
+                "https://uploads.github.com/repos/${env:GITHUB_REPOSITORY}/releases/${env:GITHUB_RELEASE_ID}/assets?name=$baseName"
+            }
+            else {
+              Write-Host "Skipping directory $($_.FullName)"
+            }
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RELEASE_ID: ${{ github.event.release.id }}
+
 
