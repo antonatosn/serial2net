@@ -106,15 +106,9 @@ jobs:
                 -H "Authorization: token $env:GITHUB_TOKEN" `
                 -H "Content-Type: application/octet-stream" `
                 --data-binary "@$file" `
-                "https://uploads.github.com/repos/${env:GITHUB_REPOSITORY}/releases/${env:GITHUB_RELEASE_ID}/assets?name=$baseName"
-            }
-            else {
-              Write-Host "Skipping directory $($_.FullName)"
+                "${env:UPLOAD_URL}?name=$baseName"
             }
           }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RELEASE_ID: ${{ github.event.release.id }}
-
-
+          UPLOAD_URL: ${{ steps.create_release.outputs.upload_url }}
