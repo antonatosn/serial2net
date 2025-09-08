@@ -50,18 +50,22 @@ jobs:
 
       - name: Sign Windows binaries
         run: |
-          Get-ChildItem dist -Recurse -Filter *.exe | ForEach-Object {
+          Get-ChildItem dist -Recurse -Filter "serial2net*.exe" | ForEach-Object {
             Write-Host "Signing $($_.FullName)"
             signtool sign `
               /fd sha256 `
-              /tr http://timestamp.digicert.com `
+              /tr http://ts.harica.gr `
               /td sha256 `
               /sha1 $env:CODE_SIGN_THUMBPRINT `
+              /as `
+              /v `
+              /csp "Microsoft Enhanced RSA and AES Cryptographic Provider" `
+              /keylength 4096 `
               $_.FullName
           }
         shell: pwsh
         env:
-          CODE_SIGN_THUMBPRINT: "<your-cert-thumbprint>"
+          CODE_SIGN_THUMBPRINT: ${{ secrets.CODE_SIGN_THUMBPRINT }}
 
       - name: Upload signed artifacts
         uses: actions/upload-artifact@v4
